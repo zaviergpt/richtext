@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+            * {
+                border: 0;
+                padding: 0;
+                margin: 0;
+                outline: none;
+                user-select: none;
+                font-family: "Outfit", serif;
+            }
+            body {
+                background-color: #222222;
+                color: #FFFFFF;
+            }
+            .container {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .container #content {
+                border: 1px solid #000000;
+                color: rgba(255, 255, 255, 0.75);
+                font-family: sans-serif;
+                font-size: 15px;
+                background-color: rgba(0, 0, 0, 0.5);
+                overflow: auto;
+                width: calc(300px - 30px);
+                height: calc(300px/9 * 16);
+                margin: 2.5px 0px;
+                padding: 0px calc(30px/2)
+            }
+            .container #editor, .container #raw {
+                border: 1px solid #000000;
+                color: rgba(255, 255, 255, 0.75);
+                font-family: monospace;
+                font-size: 15px;
+                background-color: rgba(0, 0, 0, 0.5);
+                overflow: auto;
+                height: calc(100% - 30px);
+                width: calc(100% - 30px);
+                resize: none;
+                margin: 2.5px 0px;
+                padding: calc(30px/2)
+            }
+            .container button {
+                background-color: #DDDDDD;
+                border: 1px solid #000000;
+                padding: 5px 10px;
+            }
+            .container #content section *:not(li div, a), .container #content section:has(a) {
+                margin: calc(30px/2) 0px;
+            }
+            .container #content section a {
+                display: inline-block;
+                background-color: #DDDDDD;
+                padding: calc(7.5px/1.5) calc(15px/1.5);
+                margin: calc(7.5px/4) 0px;
+                margin-right: calc(15px/2);
+                border-radius: calc(7.5px/2);
+                font-size: 15px;
+                text-decoration: none;
+                color: #000000;
+            }
+            .container #content section h1 {
+                font-size: calc(15px * (1 + (0.75/3 * 3)));
+                line-height: calc(15px * (1 + (0.75/3 * 3)) * 1);
+            }
+            .container #content section h2 {
+                font-size: calc(15px * (1 + (0.75/3 * 2)));
+                line-height: calc(15px * (1 + (0.75/3 * 2)) * 1);
+            }
+            .container #content section h2 {
+                font-size: calc(15px * (1 + (0.75/3 * 1)));
+                line-height: calc(15px * (1 + (0.75/3 * 1)) * 1);
+            }
+            .container #content section li {
+                display: flex;
+                margin: 0px 15px;
+            }
+            .container #content section div:not(li div) {
+                padding: 7.5px 10px;
+                background-color: rgba(0, 0, 0, 0.25);
+                border: 1px solid rgba(255, 255, 255, 0.25);
+                border-radius: calc(7.5px/2);
+                font-size: calc(15px/1.125);
+                line-height: calc(15px/1.125 * 1.25)
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div style="width: 300px; aspect-ratio: 9/16; margin-right: 15px">
+                <span>Editor Input/Output</span>
+                <textarea id="editor"></textarea>
+            </div>
+            <div>
+                <span>Readable Content</span>
+                <div id="content"></div>
+            </div>
+        </div>
+    </body>
+    <script>
+        editor = document.getElementById("editor")
+        raw = document.getElementById("raw")
+        content = document.getElementById("content")
+        convert = document.getElementById("convert")
+        timer = null
+        function _convert(text, type) {
+            sections = [{}, 0]
+            if (text.includes("\\n")) text = text.replace(/\\n/g, "\n").replace(/\\"/g, '"').split("\n")
+            else text = text.split("\n")
+            text.forEach((line) => {
+                if (line.length > 0) {
+                    if (!sections[0][sections[1]]) sections[0][sections[1]] = []
+                    sections[0][sections[1]].push(line)
+                } else sections[1] += 1
+            })
+            content.innerHTML = ""
+            Object.entries(sections[0]).forEach((section) => {
+                section = [section[1], document.createElement("section")]
+                section[0].forEach((line) => {
+                    if (line.includes("# ") && line.startsWith("#")) {
+                        line = [line.split(line.split(" ")[0] + " ")[1], document.createElement(`h${line.split(" ")[0].split("#").length-1}`)]
+                        line[1].textContent = line[0]
+                    } else if (line.includes("> ")) {
+                        line = [line.split(line.split(" ")[0] + " ")[1], document.createElement("a")]
+                        line[1].textContent = line[0]
+                    } else if (line.includes("- ") && line.startsWith("-")) {
+                        line = [line.split(line.split(" ")[0] + " ")[1], document.createElement("li")]
+                        line[1].innerHTML = `<div>${line[0]}</div>`
+                    } else if (line.includes("**") && line.startsWith("**") && line.endsWith("**")) {
+                        line = [line.split("**")[1], document.createElement("p")]
+                        line[1].style.fontWeight = 600
+                        line[1].textContent = line[0]
+                    } else if (line.includes("`") && line.startsWith("`") && line.endsWith("`")) {
+                        line = [line.split("`")[1], document.createElement("div")]
+                        line[1].textContent = line[0]
+                    } else {
+                        line = [line, document.createElement("p")]
+                        line[1].textContent = line[0]
+                    }
+                    section[1].appendChild(line[1])
+                })
+                content.appendChild(section[1])
+            })
+            editor.value = text.join("\n")
+            console.log(JSON.stringify([text.join("\\n")]).split('["')[1].split('"]')[0].replace(/\\\\n/g, "\\n").replace(/\\\\"/g, '\"'))
+        }
+        editor.addEventListener("keyup", () => {
+            if (timer) clearTimeout(timer)
+            timer = setTimeout(function(){
+                _convert(editor.value, "editor")
+            }, 2500)
+        })
+        editor.addEventListener("scroll", (event) => {
+            content.scrollTop = (editor.scrollTop/(editor.scrollHeight - editor.clientHeight)) * (content.scrollHeight - content.clientHeight)
+        })
+    </script>
+</html>
